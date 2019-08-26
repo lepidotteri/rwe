@@ -9,6 +9,7 @@ import * as protocol from "../ws/protocol";
 import { GameClientService } from "../ws/game-client";
 
 import { RweBridge } from "../bridge";
+import { getIpv4Address } from "../ip-lookup";
 import { MasterClientService } from "../master/master-client";
 import { execRwe, RweArgs, RweArgsEmptyPlayerSlot, RweArgsFilledPlayerSlot, RweArgsPlayerController, RweArgsPlayerInfo, RweArgsPlayerSlot } from "../rwe";
 import { assertNever, masterServer } from "../util";
@@ -131,17 +132,22 @@ const gameRoomEpic = (action$: rx.Observable<AppAction>, state$: StateObservable
             rxop.first(),
           ).subscribe(x => {
             deps.bridgeService.addDataPath(getDefaultDataPath());
-            clientService.connectToServer(`${masterServer()}/rooms`, x.payload.game_id, action.playerName, x.payload.admin_key);
+            getIpv4Address().then(clientAddress => {
+              clientService.connectToServer(`${masterServer()}/rooms`, x.payload.game_id, action.playerName, clientAddress, x.payload.admin_key);
+            });
           });
           break;
         }
         case "JOIN_SELECTED_GAME_CONFIRM": {
           const state = state$.value;
           if (state.selectedGameId === undefined) { break; }
+          const selectedGameId = state.selectedGameId;
           const connectionString = `${masterServer()}/rooms`;
           console.log(`connecting to ${connectionString}`);
           deps.bridgeService.addDataPath(getDefaultDataPath());
-          clientService.connectToServer(connectionString, state.selectedGameId, action.name);
+          getIpv4Address().then(clientAddress => {
+            clientService.connectToServer(connectionString, selectedGameId, action.name, clientAddress);
+          });
           break;
         }
         case "SEND_CHAT_MESSAGE": {
